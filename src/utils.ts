@@ -6,7 +6,7 @@ const { walk } = require("fs-walk")
 
 const isScriptFile = (file: string) => /\.(js|ts)$/i.test(file)
 
-export const scanModules = async (dir: string) => new Promise((resolve, reject) => {
+export const scanModules = async (dir: string): Promise<{error?: Error}> => new Promise((resolve, reject) => {
   walk(dir, (baseDir: string, filename: string, state: any, next: () => void) => {
     if (!state.isFile() || !isScriptFile(filename)) {
       next()
@@ -17,7 +17,7 @@ export const scanModules = async (dir: string) => new Promise((resolve, reject) 
       next()
     }
   }, (error: Error) => {
-    error ? reject(error) : resolve()
+    error ? resolve({ error }) : resolve()
   })
 })
 

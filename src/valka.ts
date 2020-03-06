@@ -66,40 +66,43 @@ export async function Valka(options: IValkaOptionalConfig) {
     logger.keepSilent()
   }
 
-  const route: IValkaMiddleware = await scanControllers(config)
+  try {
+    const route: IValkaMiddleware = await scanControllers(config)
+    if (config.middlewares.length > 0) {
+      config.middlewares.forEach((middleware) => app.use(middleware))
+    }
 
-  if (config.middlewares.length > 0) {
-    config.middlewares.forEach((middleware) => app.use(middleware))
-  }
-
-  app.use(bodyParser({
-    jsonLimit: "50mb",
-    formLimit: "50mb",
-  }))
-
-  if (config.enableAuth) {
-    app.use(jwt({
-      secret: config.jwtSecret,
-      cookie: config.jwtCookie,
-      passthrough: true,
+    app.use(bodyParser({
+      jsonLimit: "50mb",
+      formLimit: "50mb",
     }))
+
+    if (config.enableAuth) {
+      app.use(jwt({
+        secret: config.jwtSecret,
+        cookie: config.jwtCookie,
+        passthrough: true,
+      }))
+    }
+
+    const mainMiddleware = addTokenHandler(route, config)
+    app.use(addErrorHandler(mainMiddleware, config))
+
+    const staticDir = path.resolve(config.baseDir, "static")
+    const staticMiddleware = process.env.NODE_ENV === "production"
+      ? koaStaticCache(staticDir, { maxAge: 60 * 60 * 24 * 365, dynamic: true })
+      : koaStatic(staticDir)
+
+    app.use(addErrorHandler(staticMiddleware, config))
+
+    const server = app.listen(config.port, () => {
+      logger.log(`Server started at port ${config.port}`)
+    })
+
+    return server 
+  } catch (e) {
+    throw e
   }
-
-  const mainMiddleware = addTokenHandler(route, config)
-  app.use(addErrorHandler(mainMiddleware, config))
-
-  const staticDir = path.resolve(config.baseDir, "static")
-  const staticMiddleware = process.env.NODE_ENV === "production"
-    ? koaStaticCache(staticDir, { maxAge: 60 * 60 * 24 * 365, dynamic: true })
-    : koaStatic(staticDir)
-
-  app.use(addErrorHandler(staticMiddleware, config))
-
-  const server = app.listen(config.port, () => {
-    logger.log(`Server started at port ${config.port}`)
-  })
-
-  return server
 }
 
 const addTokenHandler = (route: IValkaMiddleware, config: IValkaConfig) =>

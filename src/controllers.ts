@@ -35,7 +35,10 @@ export const scanControllers = async (config: IValkaConfig): Promise<IValkaMiddl
 
   /* 先扫描文件夹，找到所有需要初始化的类 */
   const controllersDir = path.resolve(config.baseDir, "controllers")
-  await scanModules(controllersDir)
+  const { error } = await scanModules(controllersDir)
+  if (error) {
+    console.error(`初始化文件夹出错, 请确认是否创建必要文件: ${error.message}`)
+  }
 
   /* 实例化类，并且将指定方法注册到路由器上 */
   ControllerClasses.forEach((ControllerClass: IValkaController) => {
